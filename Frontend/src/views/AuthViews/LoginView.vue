@@ -146,7 +146,6 @@ const handleLogin = async () => {
     })
     
     if (result.success) {
-      console.log('Login successful:', result.data)
       
       // Emit login success with role information
       emit('login-success', {
@@ -158,11 +157,9 @@ const handleLogin = async () => {
     } else {
       // Display error from auth service
       apiError.value = result.message
-      console.error('Login failed:', result.message)
     }
     
   } catch (error) {
-    console.error('Login error:', error)
     apiError.value = 'An unexpected error occurred. Please try again.'
   } finally {
     isLoading.value = false

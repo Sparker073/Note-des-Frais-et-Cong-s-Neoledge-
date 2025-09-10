@@ -414,18 +414,15 @@ const handleSignup = async () => {
     const result = await authService.signup(requestData)
     
     if (result.success) {
-      console.log('Signup successful:', result.data)
       emit('signup-success', {
         role: result.role || 'employe',
         user: result.user || result.data
       })
     } else {
       apiError.value = result.message
-      console.error('Signup failed:', result.message)
     }
     
   } catch (error) {
-    console.error('Signup error:', error)
     
     if (error.response) {
       const errorMessage = error.response.data?.message || 'Registration failed'

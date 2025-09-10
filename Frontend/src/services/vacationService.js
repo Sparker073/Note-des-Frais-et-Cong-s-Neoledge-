@@ -18,7 +18,6 @@ class VacationService {
     try {
       return JSON.parse(text)
     } catch (error) {
-      console.error('Failed to parse JSON:', text)
       return {
         success: false,
         message: response.status === 401 ? 'Session expirée. Veuillez vous reconnecter.' : 'Réponse invalide du serveur',
@@ -49,9 +48,7 @@ class VacationService {
 
   // Make authenticated request using HttpOnly cookies
   async makeRequest(url, options = {}) {
-    console.log('🌐 Making request to:', url)
-    console.log('🔧 Request options:', options.method || 'GET')
-    
+     
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json'
@@ -68,22 +65,16 @@ class VacationService {
       }
     }
 
-    console.log('📋 Request will include cookies via credentials: include')
-
     try {
-      const response = await fetch(url, mergedOptions)
-      console.log('📡 Response status:', response.status)
-      
+      const response = await fetch(url, mergedOptions)      
       // Handle 401 specifically
       if (response.status === 401) {
-        console.log('🚫 401 Unauthorized - handling auth error')
         return { response, result: this.handleAuthError() }
       }
 
       const result = await this.safeJsonParse(response)
       return { response, result }
     } catch (error) {
-      console.error('❌ Network error:', error)
       return {
         response: null,
         result: {
@@ -174,13 +165,6 @@ class VacationService {
     balanceData.joursTotal = Math.max(0, balanceData.joursTotal)
     balanceData.joursUtilises = Math.max(0, balanceData.joursUtilises)
     
-    console.log('✅ Final balance calculation:', {
-      total: balanceData.joursTotal,
-      used: balanceData.joursUtilises,
-      remaining: balanceData.joursRestants,
-      year: balanceData.annee
-    })
-
     return balanceData
   }
 
@@ -210,7 +194,7 @@ class VacationService {
     
     // Filter approved requests for current year
     const approvedRequests = requests.filter(request => 
-      request.statut === 'Approuve' && 
+      (request.statut === 'Approuve' ) && 
       new Date(request.dateDebut).getFullYear() === currentYear
     )
 
@@ -254,16 +238,13 @@ class VacationService {
 
   // Create a new vacation request
   async createVacationRequest(requestData) {
-    console.log('Creating vacation request:', requestData)
-    
-    const payload = {
+        const payload = {
       DateDebut: this.formatDateForApi(requestData.dateDebut),
       DateFin: this.formatDateForApi(requestData.dateFin),
       Type: requestData.type,
       Commentaire: requestData.commentaire || null
     }
     
-    console.log('API Payload:', payload)
     
     const { response, result } = await this.makeRequest(`${this.apiBaseUrl}/user`, {
       method: 'POST',
@@ -272,8 +253,6 @@ class VacationService {
 
     if (!response) return result
 
-    console.log('Response status:', response.status)
-    console.log('Parsed result:', result)
     
     if (response.ok && result.success !== false) {
       return {

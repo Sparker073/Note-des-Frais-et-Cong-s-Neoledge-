@@ -44,7 +44,6 @@ class UserService {
         status: response.status
       }
     } catch (error) {
-      console.error('Network error:', error)
       return {
         success: false,
         message: 'Network error. Check your connection.'
@@ -67,7 +66,6 @@ class UserService {
 
   // Update user profile - matches your UpdateUserDto
   async updateUserProfile(userId, updateData) {
-    console.log(`🔄 Updating user profile for ID: ${userId}`, updateData)
     
     // Validate required fields before sending
     if (!updateData.nom || !updateData.email) {
@@ -86,7 +84,6 @@ class UserService {
       managerId: updateData.managerId || null
     }
 
-    console.log('📤 Sending update payload:', payload)
 
     const result = await this.makeRequest(
       `${this.apiBaseUrl}/User/${userId}`,
@@ -97,7 +94,6 @@ class UserService {
     )
 
     if (result.success) {
-      console.log('✅ User profile updated successfully:', result.data)
       
       // Update cache with new data
       if (result.data?.data) {
@@ -115,7 +111,6 @@ class UserService {
         message: 'Profile updated successfully'
       }
     } else {
-      console.error('❌ Failed to update user profile:', result.message)
       return {
         success: false,
         message: result.message || 'Failed to update profile'
@@ -144,7 +139,6 @@ class UserService {
       }
     }
 
-    console.log(`🔍 Fetching user details for ID: ${userId}`)
     
     const result = await this.makeRequest(`${this.apiBaseUrl}/User/${userId}`)
     
@@ -152,13 +146,11 @@ class UserService {
       // Extract user from API response wrapper
       const userData = result.data.data || result.data
       this.userCache.set(userId, userData)
-      console.log(`✅ User ${userId} fetched:`, userData)
       return {
         success: true,
         data: userData
       }
     } else {
-      console.warn(`❌ Failed to fetch user ${userId}:`, result.message)
       return {
         success: false,
         message: result.message || 'Failed to fetch user',
@@ -169,7 +161,6 @@ class UserService {
 
   // Get all users who can be managers (you might want to create a specific endpoint for this)
   async getAvailableManagers() {
-    console.log('🔍 Fetching available managers...')
     
     // Option 1: Get all users and filter (if you have a get all users endpoint)
     const result = await this.makeRequest(`${this.apiBaseUrl}/User`)
@@ -191,13 +182,11 @@ class UserService {
           role: user.Role || user.role || 'Employee'
         }))
         
-      console.log('✅ Available managers loaded:', managers.length)
       return {
         success: true,
         data: managers
       }
     } else {
-      console.warn('❌ Failed to load managers:', result.message)
       return {
         success: false,
         message: result.message || 'Failed to load managers',
@@ -433,11 +422,6 @@ class UserService {
     }
   }
 
-  // Debug method to log current user
-  debugUser() {
-    console.log('Current User Data:', this.currentUser)
-    console.log('User Cache:', this.userCache)
-  }
 }
 
 // Export singleton instance

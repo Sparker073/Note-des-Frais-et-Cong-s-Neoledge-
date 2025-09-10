@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MonBackend.Data;
 
-#nullable disable
 
 namespace MonBackend.Migrations
 {

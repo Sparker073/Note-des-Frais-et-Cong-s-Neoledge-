@@ -469,7 +469,6 @@ export default {
         await this.loadUserVacationRequests()
 
       } catch (error) {
-        console.error('Error loading profile data:', error)
         this.error = 'Failed to load profile data. Please try again.'
       } finally {
         this.loading = false
@@ -488,11 +487,9 @@ async loadAvailableManagers() {
     if (result.success && result.data) {
       this.availableManagers = result.data
     } else {
-      console.warn('Failed to load managers:', result.message)
       this.availableManagers = []
     }
   } catch (error) {
-    console.error('Error loading managers:', error)
     this.availableManagers = []
   } finally {
     this.loadingManagers = false
@@ -511,7 +508,6 @@ async loadAvailableManagers() {
           }
           
         } else {
-          console.warn('❌ Failed to load current year balance:', currentYearResult.message)
           if (currentYearResult.message && currentYearResult.message.includes('Session')) {
             this.error = currentYearResult.message
             return
@@ -531,7 +527,6 @@ async loadAvailableManagers() {
             joursRestants: nextYearResult.data.joursRestants || 30
           }
         } else {
-          console.warn('❌ Failed to load next year balance:', nextYearResult.message)
           this.nextYearBalance = {
             joursTotal: 30,
             joursUtilises: 0,
@@ -540,7 +535,6 @@ async loadAvailableManagers() {
         }
         
       } catch (error) {
-        console.error('❌ Error loading vacation balances:', error)
         this.error = 'Failed to load vacation data. Please try again.'
       }
     },
@@ -552,11 +546,9 @@ async loadAvailableManagers() {
         if (requestsResult.success && requestsResult.data) {
           this.userRequests = requestsResult.data
         } else {
-          console.warn('Failed to load vacation requests:', requestsResult.message)
           this.userRequests = []
         }
       } catch (error) {
-        console.error('Error loading vacation requests:', error)
         this.userRequests = []
       }
     },
@@ -566,7 +558,6 @@ async loadAvailableManagers() {
       try {
         await this.loadVacationBalances()
       } catch (error) {
-        console.error('Error refreshing vacation balance:', error)
         this.error = 'Failed to refresh vacation data.'
       } finally {
         this.refreshingBalance = false
@@ -602,7 +593,6 @@ async loadAvailableManagers() {
           this.managerDisplayName = null
         }
       } catch (error) {
-        console.error('Error loading manager info:', error)
         this.managerDisplayName = 'Error Loading Manager'
       }
     },
@@ -689,7 +679,6 @@ async loadAvailableManagers() {
         
         // Ensure the manager ID is preserved if the fresh data is still wrong
         if (this.profileForm.managerId !== selectedManagerId) {
-          console.warn('⚠️ Manager ID mismatch after refresh, preserving selection')
           this.profileForm.managerId = selectedManagerId
         }
       }
@@ -708,7 +697,6 @@ async loadAvailableManagers() {
     }
     
   } catch (error) {
-    console.error('Error saving profile:', error)
     this.showToast(error.message || 'Failed to save profile. Please try again.', 'error')
   } finally {
     this.saving = false
@@ -774,8 +762,6 @@ async updateUserProfile(userId, updateData) {
       message: 'Profile updated successfully'
     }
   } else {
-    console.error('❌ Failed to update user profile:', result.message)
-    console.error('❌ Server response:', result)
     return {
       success: false,
       message: result.message || 'Failed to update profile',
@@ -795,7 +781,6 @@ async updateUserProfile(userId, updateData) {
         this.showSuccessMessage('These functionnalities can be added in a future update')
         
       } catch (error) {
-        console.error('Error saving preferences:', error)
         this.error = 'Failed to save preferences. Please try again.'
       } finally {
         this.savingPreferences = false

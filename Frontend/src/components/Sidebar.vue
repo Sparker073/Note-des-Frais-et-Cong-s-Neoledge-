@@ -227,9 +227,7 @@ export default {
         
         await authService.logout()
         router.push('/login')
-        console.log('Logged out successfully')
       } catch (error) {
-        console.error('Logout failed:', error)
         alert('Logout failed. Please try again.')
       } finally {
         isLoggingOut.value = false
@@ -241,7 +239,6 @@ export default {
 const loadUserStats = async () => {
   if (isLoadingStats.value) return // Prevent concurrent loading
   
-  console.log('📊 Loading user statistics...')
   isLoadingStats.value = true
   
   try {
@@ -259,12 +256,6 @@ const loadUserStats = async () => {
 
     // Process expense reports
     if (expenseResult.success && Array.isArray(expenseResult.data)) {
-      // Debug: Log all expense statuses to understand the format
-      console.log('💰 All expense statuses:', expenseResult.data.map(item => ({
-        id: item.id,
-        statut: item.statut,
-        statusType: typeof item.statut
-      })))
 
       // Handle the actual status values from your expense API
       const expensePending = expenseResult.data.filter(item => {
@@ -299,25 +290,12 @@ const loadUserStats = async () => {
       pendingTotal += expensePending
       approvedTotal += expenseApproved
 
-      console.log('💰 Expense stats:', { 
-        pending: expensePending, 
-        approved: expenseApproved,
-        totalItems: expenseResult.data.length,
-        rawData: expenseResult.data.map(item => ({ id: item.id, statut: item.statut }))
-      })
     } else {
-      console.log('💰 No expense data or error:', expenseResult?.message || 'No data')
     }
 
     // Process vacation requests
     if (vacationResult.success && Array.isArray(vacationResult.data)) {
-      // Debug: Log all vacation statuses to understand the format
-      console.log('🏖️ All vacation statuses:', vacationResult.data.map(item => ({
-        id: item.id,
-        statut: item.statut,
-        statusType: typeof item.statut
-      })))
-
+    
       // Handle the actual status values from your vacation API
       const vacationPending = vacationResult.data.filter(item => {
         const status = item.statut
@@ -351,32 +329,18 @@ const loadUserStats = async () => {
       pendingTotal += vacationPending
       approvedTotal += vacationApproved
 
-      console.log('🏖️ Vacation stats:', { 
-        pending: vacationPending, 
-        approved: vacationApproved,
-        totalItems: vacationResult.data.length,
-        rawData: vacationResult.data.map(item => ({ id: item.id, statut: item.statut }))
-      })
+      
     } else {
-      console.log('🏖️ No vacation data or error:', vacationResult?.message || 'No data')
     }
 
     // Update the reactive values
     pendingCount.value = pendingTotal
     approvedCount.value = approvedTotal
 
-    console.log('✅ Total combined stats:', { 
-      pending: pendingTotal, 
-      approved: approvedTotal,
-      breakdown: {
-        expenses: expenseResult.success ? expenseResult.data?.length || 0 : 0,
-        vacations: vacationResult.success ? vacationResult.data?.length || 0 : 0
-      }
-    })
+    
 
   } catch (error) {
-    console.error('❌ Error loading user stats:', error)
-    // Don't reset counts on error, keep previous values
+    
   } finally {
     isLoadingStats.value = false
   }
@@ -392,7 +356,6 @@ const loadUserStats = async () => {
           return await expenseService.getUserExpenseReports()
         }
       } catch (error) {
-        console.error('Error fetching expense stats:', error)
         return { success: false, message: error.message, data: [] }
       }
     }
@@ -411,7 +374,6 @@ const loadUserStats = async () => {
           return await vacationService.getUserVacationRequests()
         }
       } catch (error) {
-        console.error('Error fetching vacation stats:', error)
         return { success: false, message: error.message, data: [] }
       }
     }
@@ -428,7 +390,6 @@ const loadUserStats = async () => {
       }
       
       statsRefreshInterval.value = setInterval(() => {
-        console.log('🔄 Auto-refreshing stats...')
         loadUserStats()
       }, 5 * 60 * 1000) // 5 minutes
     }
@@ -437,7 +398,6 @@ const loadUserStats = async () => {
     watch(() => route.path, (newPath) => {
       // Refresh stats when user navigates to expense or vacation sections
       if (newPath.includes('/expenses') || newPath.includes('/vacation')) {
-        console.log('🔄 Route changed to data section, refreshing stats...')
         setTimeout(loadUserStats, 1000) // Small delay to let the component load
       }
     })
@@ -468,7 +428,6 @@ const loadUserStats = async () => {
 
       // Listen for auth expiration events
       window.addEventListener('auth-expired', () => {
-        console.log('🚫 Auth expired, clearing stats refresh')
         if (statsRefreshInterval.value) {
           clearInterval(statsRefreshInterval.value)
           statsRefreshInterval.value = null

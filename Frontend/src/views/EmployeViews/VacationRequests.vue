@@ -117,7 +117,7 @@
                 <strong>Note du Manager:</strong> {{ request.commentaireManager }}
               </div>
             </div>
-            <div class="request-actions">
+            <div class="request-actions" v-if="request.statut === 'enAttente'">
               <button class="edit-btn" @click="editRequest(request)">
                 <i class="fas fa-edit"></i>
                 Modifier
@@ -467,67 +467,98 @@ export default {
       }
     },
     
-    async loadData() {
-      this.loading = true
-      this.error = null
-      
-      try {
-        if (!this.currentUser) {
-          throw new Error('Utilisateur non authentifié. Veuillez vous reconnecter.')
-        }
+   async loadData() {
+    this.loading = true
+    this.error = null
+    
+    try {
+      if (!this.currentUser) {
+        throw new Error('Utilisateur non authentifié. Veuillez vous reconnecter.')
+      }
 
-        // Load user vacation requests
-        const personalResponse = await vacationService.getUserVacationRequests()
-        if (personalResponse.success) {
-          this.personalRequests = Array.isArray(personalResponse.data) ? personalResponse.data : []
-        } else {
-          if (personalResponse.message && personalResponse.message.includes('401')) {
-            throw new Error('Session expirée. Veuillez vous reconnecter.')
-          }
-          console.warn('Failed to load personal requests:', personalResponse.message)
-          this.personalRequests = []
+      // Load user vacation requests
+      const personalResponse = await vacationService.getUserVacationRequests()
+      if (personalResponse.success) {
+        this.personalRequests = Array.isArray(personalResponse.data) ? personalResponse.data : []
+      } else {
+        if (personalResponse.message && personalResponse.message.includes('401')) {
+          throw new Error('Session expirée. Veuillez vous reconnecter.')
         }
+        this.personalRequests = []
+      }
+      
+      // Calculate vacation balance from personal requests
+      if (this.personalRequests && Array.isArray(this.personalRequests)) {
+        // Calculate used days from approved requests
+        const approvedRequests = this.personalRequests.filter(request => {
+          return request.statut === 'Approuve' || request.statut === 'approuve'
+        })
         
-        // Load vacation balance
+        // Sum up all the vacation days from approved requests
+        const totalUsedDays = approvedRequests.reduce((total, request) => {
+          // Use the nombreJours field if available
+          let days = request.nombreJours || 0
+          
+          // If nombreJours is not available, calculate from dates
+          if (!days || days <= 0) {
+            days = vacationService.calculateDuration(request.dateDebut, request.dateFin)
+          }
+          
+          return total + days
+        }, 0)
+        
+        // Calculate remaining days (assuming 30 total annual days)
+        const remainingDays = Math.max(30 - totalUsedDays, 0)
+        
+        this.vacationBalance = {
+          joursRestants: remainingDays,
+          joursUtilises: totalUsedDays,
+          joursTotal: 30,
+          annee: new Date().getFullYear()
+        }
+      } else {
+        // Fallback: try to load from service
         const balanceResponse = await vacationService.getVacationBalance()
         if (balanceResponse.success) {
           this.vacationBalance = balanceResponse.data
         } else {
-          if (!balanceResponse.message || !balanceResponse.message.includes('401')) {
-            console.warn('Failed to load vacation balance:', balanceResponse.message)
+          this.vacationBalance = {
+            joursRestants: 30,
+            joursUtilises: 0,
+            joursTotal: 30,
+            annee: new Date().getFullYear()
           }
-          this.vacationBalance = null
         }
-        
-        // Load team requests if user is manager
-        if (this.isManager) {
-          const teamResponse = await vacationService.getTeamVacationRequests()
-          if (teamResponse.success) {
-            this.teamRequests = Array.isArray(teamResponse.data) ? teamResponse.data : []
-          } else {
-            if (!teamResponse.message || !teamResponse.message.includes('401')) {
-              console.warn('Failed to load team requests:', teamResponse.message)
-            }
-            this.teamRequests = []
-          }
+      }
+      
+      // Load team requests if user is manager
+      if (this.isManager) {
+        const teamResponse = await vacationService.getTeamVacationRequests()
+        if (teamResponse.success) {
+          this.teamRequests = Array.isArray(teamResponse.data) ? teamResponse.data : []
         } else {
+          if (!teamResponse.message || !teamResponse.message.includes('401')) {
+            // Silent error for team requests
+          }
           this.teamRequests = []
         }
-        
-      } catch (error) {
-        this.error = error.message || 'Erreur lors du chargement des données'
-        console.error('Error loading vacation data:', error)
-        
-        if (error.message.includes('authentifié') || error.message.includes('Session')) {
-          this.$emit?.('auth-error')
-        }
-        
-        this.personalRequests = []
+      } else {
         this.teamRequests = []
-        this.vacationBalance = null
-      } finally {
-        this.loading = false
       }
+      
+    } catch (error) {
+      this.error = error.message || 'Erreur lors du chargement des données'
+      
+      if (error.message.includes('authentifié') || error.message.includes('Session')) {
+        this.$emit?.('auth-error')
+      }
+      
+      this.personalRequests = []
+      this.teamRequests = []
+      this.vacationBalance = null
+    } finally {
+      this.loading = false
+    }
     },
     
     formatBalanceValue(balance) {

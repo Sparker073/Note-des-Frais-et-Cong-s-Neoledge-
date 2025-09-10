@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\karim\\OneDrive\\Bureau\\Gestion des Congés\\Backend\\MonBackend.csproj": {}
+    "C:\\Users\\karim\\OneDrive\\Bureau\\Projet des Frais de des Congés\\Backend\\MonBackend.csproj": {}
   },
   "projects": {
-    "C:\\Users\\karim\\OneDrive\\Bureau\\Gestion des Congés\\Backend\\MonBackend.csproj": {
+    "C:\\Users\\karim\\OneDrive\\Bureau\\Projet des Frais de des Congés\\Backend\\MonBackend.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\karim\\OneDrive\\Bureau\\Gestion des Congés\\Backend\\MonBackend.csproj",
+        "projectUniqueName": "C:\\Users\\karim\\OneDrive\\Bureau\\Projet des Frais de des Congés\\Backend\\MonBackend.csproj",
         "projectName": "MonBackend",
-        "projectPath": "C:\\Users\\karim\\OneDrive\\Bureau\\Gestion des Congés\\Backend\\MonBackend.csproj",
+        "projectPath": "C:\\Users\\karim\\OneDrive\\Bureau\\Projet des Frais de des Congés\\Backend\\MonBackend.csproj",
         "packagesPath": "C:\\Users\\karim\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\karim\\OneDrive\\Bureau\\Gestion des Congés\\Backend\\obj\\",
+        "outputPath": "C:\\Users\\karim\\OneDrive\\Bureau\\Projet des Frais de des Congés\\Backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\karim\\AppData\\Roaming\\NuGet\\NuGet.Config"

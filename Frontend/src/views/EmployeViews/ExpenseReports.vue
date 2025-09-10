@@ -594,7 +594,6 @@ export default {
           this.loadTarifKms()
         ])
       } catch (error) {
-        console.error('Failed to initialize component:', error)
         this.error.page = 'Failed to load initial data. Please refresh the page.'
       } finally {
         this.loading.page = false
@@ -626,7 +625,6 @@ export default {
           }
         }
       } catch (error) {
-        console.error('Failed to load expense reports:', error)
         this.error.operation = 'Unable to load expense reports. Please refresh the page or contact support.'
       } finally {
         this.loading.reports = false
@@ -642,11 +640,9 @@ export default {
         if (result.success) {
           this.projects = result.data || []
         } else {
-          console.warn('Failed to load projects:', result.message)
           this.projects = []
         }
       } catch (error) {
-        console.error('Failed to load projects:', error)
         this.projects = []
       } finally {
         this.loading.projects = false
@@ -660,11 +656,9 @@ export default {
         if (result.success) {
           this.tarifKms = result.data || []
         } else {
-          console.warn('Failed to load km rates:', result.message)
           this.tarifKms = []
         }
       } catch (error) {
-        console.error('Failed to load km rates:', error)
         this.tarifKms = []
       }
     },
@@ -755,7 +749,6 @@ export default {
           throw new Error(result.message)
         }
       } catch (error) {
-        console.error('Failed to delete report:', error)
         this.error.operation = error.message || 'Failed to delete expense report'
       } finally {
         this.loading.delete = false
@@ -982,7 +975,6 @@ async submitReport() {
             processedLineIds.push(line.id)
           } else {
             // If update fails, try to create new line instead
-            console.warn(`Update failed for line ${line.id}, creating new line:`, lineResult.message)
             delete lineData.id
             const createResult = await expenseService.createExpenseLine(lineData)
             if (!createResult.success) {
@@ -990,7 +982,6 @@ async submitReport() {
             }
           }
         } catch (error) {
-          console.error(`Error updating line ${line.id}:`, error)
           // Fallback: create new line
           delete lineData.id
           const createResult = await expenseService.createExpenseLine(lineData)
@@ -1016,7 +1007,6 @@ async submitReport() {
     await this.loadExpenseReports()
     
   } catch (error) {
-    console.error('Failed to submit report:', error)
     this.error.form = error.message || 'Failed to submit expense report'
   } finally {
     this.loading.submit = false

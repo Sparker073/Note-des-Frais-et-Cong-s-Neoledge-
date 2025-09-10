@@ -812,7 +812,6 @@ export default {
       try {
         await submitWithRetry()
       } catch (err) {
-        console.error('Failed to submit expense report after retries:', err)
         handleSubmissionError(err)
       } finally {
         isSubmitting.value = false
@@ -925,14 +924,12 @@ export default {
           lineResults.push(lineResult)
         } catch (lineError) {
           // If any line fails, we should clean up the created report
-          console.error(`Failed to create line ${index + 1}:`, lineError)
           
           submissionStatus.value = 'Cleaning up incomplete submission...'
           // Attempt to delete the created report
           try {
             await expenseService.deleteExpenseReport(reportId)
           } catch (cleanupError) {
-            console.error('Failed to cleanup incomplete report:', cleanupError)
           }
           
           throw new Error(`Failed to create expense line ${index + 1}: ${lineError.message}`)
@@ -947,7 +944,6 @@ export default {
 
     // Handle different types of submission errors
     const handleSubmissionError = (err) => {
-      console.error('Submission error:', err)
       
       if (err instanceof ValidationError) {
         serverErrors.value = err.errors
@@ -1197,7 +1193,6 @@ export default {
           emit('vacation-created')
         }
       } catch (error) {
-        console.error('Error submitting vacation request:', error)
         validationErrors.value = [error.message || 'Error submitting vacation request']
       } finally {
         submitting.value = false
@@ -1234,11 +1229,9 @@ export default {
         if (result.success) {
           projects.value = result.data || []
         } else {
-          console.warn('Failed to load projects:', result.message)
           projects.value = []
         }
       } catch (error) {
-        console.error('Failed to load projects:', error)
         projects.value = []
       } finally {
         loading.value.projects = false
@@ -1252,11 +1245,9 @@ export default {
         if (result.success) {
           tarifKms.value = result.data || []
         } else {
-          console.warn('Failed to load km rates:', result.message)
           tarifKms.value = []
         }
       } catch (error) {
-        console.error('Failed to load km rates:', error)
         tarifKms.value = []
       }
     }
@@ -1332,88 +1323,143 @@ export default {
       )
     }
 
-    const loadUserStats = async () => {
+  const loadUserStats = async () => {
+    try {
+      const userId = userService.getUserId()
+      if (!userId) {
+        return
+      }
+
+      // Initialize with default values
+      const newStats = {
+        vacationDays: 0,
+        pendingRequests: 0,
+        expenses: 0
+      }
+
+      // === VACATION DAYS CALCULATION - FIXED ===
       try {
-        const userId = userService.getUserId()
-        if (!userId) {
-          console.warn('No user ID available for loading stats')
-          return
-        }
-
-        // Initialize with default values
-        const newStats = {
-          vacationDays: 0,
-          pendingRequests: 0,
-          expenses: 0
-        }
-
-        // Load vacation balance to calculate days off used (30 - remaining balance)
-        try {
-          const balanceResult = await vacationService.getVacationBalance()
-          if (balanceResult.success && balanceResult.data) {
-            const totalAnnualDays = 30
-            const remainingDays = balanceResult.data.joursRestants || 0
-            newStats.vacationDays = Math.max(0, totalAnnualDays - remainingDays)
+        // calculate directly from vacation requests
+        const vacationResult = await vacationService.getUserVacationRequests()
+        
+        if (vacationResult.success && vacationResult.data && Array.isArray(vacationResult.data)) {
+          // Calculate used days from approved requests
+          const approvedRequests = vacationResult.data.filter(request => {
+            return request.statut === 'approuve' 
+          })
+          
+          // Sum up all the vacation days from approved requests
+          const totalUsedDays = approvedRequests.reduce((total, request) => {
+            // Use the nombreJours field if available (this is what your API provides)
+            let days = request.nombreJours || 0
             
-          }
-        } catch (error) {
-          console.error('Failed to load vacation balance:', error)
-        }
-
-        // Load vacation requests to count pending ones
-        try {
-          const vacationResult = await vacationService.getUserVacationRequests()
-          if (vacationResult.success && vacationResult.data) {
-            const pendingRequests = vacationResult.data.filter(request => 
-              request.statut === 'enAttente'
-            )
-            newStats.pendingRequests = pendingRequests.length
-          }
-        } catch (error) {
-          console.error('Failed to load vacation requests:', error)
-        }
-
-        // Load expense reports to calculate current month total
-        try {
-          const expenseResult = await expenseService.getUserExpenseReports()
-          if (expenseResult.success && expenseResult.data) {
-            const currentMonth = new Date().getMonth()
-            const currentYear = new Date().getFullYear()
-            
-            const currentMonthExpenses = expenseResult.data.filter(report => {
-              const reportDate = new Date(report.dateSoumission || report.DateSoumission)
-              return reportDate.getMonth() === currentMonth && 
-                    reportDate.getFullYear() === currentYear
-            })
-
-            // Calculate total amount for current month
-            let monthlyTotal = 0
-            for (const report of currentMonthExpenses) {
-              if (report.lignes && Array.isArray(report.lignes)) {
-                monthlyTotal += expenseService.calculateExpenseTotal(report.lignes)
-              } else if (report.Lignes && Array.isArray(report.Lignes)) {
-                monthlyTotal += expenseService.calculateExpenseTotal(report.Lignes)
-              }
+            // If nombreJours is not available, calculate from dates
+            if (!days || days <= 0) {
+              days = vacationService.calculateDuration(request.dateDebut, request.dateFin)
             }
             
-            newStats.expenses = Math.round(monthlyTotal * 100) / 100 // Round to 2 decimal places
-          }
-        } catch (error) {
-          console.error('Failed to load expense reports:', error)
+            return total + days
+          }, 0)
+          
+          newStats.vacationDays = totalUsedDays
         }
-
-        // Update the stats
-        stats.value = newStats
       } catch (error) {
-        console.error('Failed to load user stats:', error)
-        // Keep default values if everything fails
-        stats.value = {
-          vacationDays: 0,
-          pendingRequests: 0,
-          expenses: 0
+      }
+
+      // === PENDING REQUESTS CALCULATION (Updated to include expenses) ===
+try {
+  let totalPendingRequests = 0;
+
+  // Get pending vacation requests
+  const vacationResult = await vacationService.getUserVacationRequests()
+  
+  if (vacationResult.success && vacationResult.data && Array.isArray(vacationResult.data)) {
+    const pendingVacationRequests = vacationResult.data.filter(request => {
+      const status = request.statut
+      if (status === null || status === undefined) return false
+      
+      // Convert to string for comparison and normalize
+      const statusStr = String(status).toLowerCase().trim()
+      
+      return statusStr === 'enattente' ||
+             statusStr === 'en_attente' || 
+             statusStr === 'en attente' ||
+             statusStr === 'pending' ||
+             statusStr === '0' ||
+             status === 0
+    })
+    totalPendingRequests += pendingVacationRequests.length
+  }
+
+    // Get pending expense reports
+    const expenseResult = await expenseService.getUserExpenseReports()
+  
+    if (expenseResult.success && expenseResult.data && Array.isArray(expenseResult.data)) {
+      const pendingExpenseReports = expenseResult.data.filter(report => {
+        const status = report.statut
+        if (status === null || status === undefined) return false
+        
+        // Convert to string for comparison and normalize
+        const statusStr = String(status).toLowerCase().trim()
+        
+        return statusStr === 'enattente' || 
+              statusStr === 'en_attente' || 
+              statusStr === 'en attente' ||
+              statusStr === 'pending' ||
+              statusStr === '0' ||
+              status === 0
+      })
+      totalPendingRequests += pendingExpenseReports.length
+    }
+
+    // Update the stats with total pending requests
+    newStats.pendingRequests = totalPendingRequests
+
+  } catch (error) {
+    console.error('Error calculating pending requests:', error)
+    // Set to 0 if there's an error to avoid displaying incorrect data
+    newStats.pendingRequests = 0
+  }
+
+      // === EXPENSES CALCULATION (Keep existing working logic) ===
+      try {
+        const expenseResult = await expenseService.getUserExpenseReports()
+        
+        if (expenseResult.success && expenseResult.data) {
+          const currentMonth = new Date().getMonth()
+          const currentYear = new Date().getFullYear()
+          
+          const currentMonthExpenses = expenseResult.data.filter(report => {
+            const reportDate = new Date(report.dateSoumission || report.DateSoumission)
+            return reportDate.getMonth() === currentMonth && 
+                  reportDate.getFullYear() === currentYear
+          })
+
+          let monthlyTotal = 0
+          for (const report of currentMonthExpenses) {
+            if (report.lignes && Array.isArray(report.lignes)) {
+              monthlyTotal += expenseService.calculateExpenseTotal(report.lignes)
+            } else if (report.Lignes && Array.isArray(report.Lignes)) {
+              monthlyTotal += expenseService.calculateExpenseTotal(report.Lignes)
+            }
+          }
+          
+          newStats.expenses = Math.round(monthlyTotal * 100) / 100
         }
+      } catch (error) {
+      }
+
+      // Update the stats
+      stats.value = newStats
+      
+    } catch (error) {
+      stats.value = {
+        vacationDays: 0,
+        pendingRequests: 0,
+        expenses: 0
       }
     }
+  }
 
     // Load recent activity (mock for now)
     const loadRecentActivity = async () => {
@@ -1424,7 +1470,6 @@ export default {
           { id: 3, title: 'Team meeting scheduled', time: '2 days ago', icon: 'fas fa-calendar', type: 'primary', status: 'completed', statusText: 'Completed' }
         ]
       } catch (error) {
-        console.error('Failed to load recent activity:', error)
       }
     }
 
@@ -1440,7 +1485,6 @@ export default {
           ]
         }
       } catch (error) {
-        console.error('Failed to load team members:', error)
       }
     }
 

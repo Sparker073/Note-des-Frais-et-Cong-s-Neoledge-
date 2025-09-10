@@ -362,7 +362,6 @@ export default {
           await this.updateTeamStats()
         }
       } catch (error) {
-        console.error('Error loading data:', error)
         this.error = 'An unexpected error occurred. Please try again.'
       } finally {
         this.loading = false
@@ -413,7 +412,6 @@ export default {
           return { success: false, message: result.message }
         }
       } catch (error) {
-        console.error('Error loading vacation requests:', error)
         this.pendingVacationRequests = []
         this.allVacationRequests = []
         return { success: false, message: 'Error loading vacation requests' }
@@ -461,7 +459,6 @@ export default {
           return { success: false, message: result.message }
         }
       } catch (error) {
-        console.error('Error loading expense reports:', error)
         this.pendingExpenseReports = []
         return { success: false, message: 'Error loading expense reports' }
       }
@@ -505,7 +502,6 @@ export default {
               managersResult.data.forEach(manager => allUserIds.add(manager.id))
             }
           } catch (error) {
-            console.warn('Could not load additional users:', error)
           }
         }
         
@@ -555,7 +551,6 @@ export default {
               })
             }
           } catch (error) {
-            console.warn(`Failed to load user ${userId}:`, error)
           }
         }
         
@@ -576,7 +571,6 @@ export default {
 
         
       } catch (error) {
-        console.error('Error updating team stats:', error)
         this.teamStats = {
           totalMembers: 0,
           onLeave: 0,
@@ -702,55 +696,126 @@ export default {
       }
     },
     
-    async approveItem(item) {
-      this.processingItems = {
-        ...this.processingItems,
-        [item.id]: true
+   async approveItem(item) {
+  this.processingItems = {
+    ...this.processingItems,
+    [item.id]: true
+  }
+  
+  try {
+    let result
+    
+    if (item.category === 'vacation') {
+      result = await vacationService.updateVacationRequestStatus(
+        item.id, 
+        'Approuve', 
+        'Approved by manager'
+      )
+    } else if (item.category === 'expense') {
+      result = await expenseService.updateExpenseReportStatus({
+        id: item.id,
+        userId: item.userId || item.employeId,
+        statut: 'Approuvee'
+      })
+    }
+    
+    if (result && result.success) {
+      // Remove the item from pending approvals list
+      const index = this.pendingApprovals.findIndex(p => p.id === item.id)
+      if (index !== -1) {
+        this.pendingApprovals.splice(index, 1)
       }
       
-      try {
-        let result
-        
-        if (item.category === 'vacation') {
-          result = await vacationService.updateVacationRequestStatus(
-            item.id, 
-            'Approuve', 
-            'Approved by manager'
-          )
-        } else if (item.category === 'expense') {
-          result = await expenseService.updateExpenseReportStatus({
-            id: item.id,
-            userId: item.userId || item.employeId,
-            statut: 'Approuvee'
-          })
-        }
-        
-        if (result && result.success) {
-          const index = this.pendingApprovals.findIndex(p => p.id === item.id)
-          if (index !== -1) {
-            this.pendingApprovals.splice(index, 1)
-          }
-          
-          this.addRecentAction({
-            type: 'rejected',
-            title: `${this.selectedItem.category === 'vacation' ? 'Vacation request' : 'Expense report'} rejected`,
-            details: `${this.selectedItem.employeeName}'s ${this.selectedItem.type.toLowerCase()} was rejected: ${this.rejectReason}`,
-            timestamp: new Date()
-          })
-          
-          this.updateTeamStats()
-          this.showNotification('Request rejected successfully', 'success')
-          this.closeRejectModal()
-        } else {
-          this.showNotification(result?.message || 'Failed to reject request', 'error')
-        }
-      } catch (error) {
-        console.error('Error rejecting item:', error)
-        this.showNotification('An error occurred while rejecting the request', 'error')
-      } finally {
-        this.rejectingItem = false
+      // Add to recent actions (FIXED: This should be for approval, not rejection)
+      this.addRecentAction({
+        type: 'approved',
+        title: `${item.category === 'vacation' ? 'Vacation request' : 'Expense report'} approved`,
+        details: `${item.employeeName}'s ${item.type.toLowerCase()} was approved`,
+        timestamp: new Date()
+      })
+      
+      // Update team statistics
+      this.updateTeamStats()
+      
+      // Show success notification (FIXED: Should say "approved")
+      this.showNotification('Request approved successfully', 'success')
+    } else {
+      this.showNotification(result?.message || 'Failed to approve request', 'error')
+    }
+  } catch (error) {
+    this.showNotification('An error occurred while approving the request', 'error')
+  } finally {
+    // Clear the processing state
+    this.processingItems = {
+      ...this.processingItems,
+      [item.id]: false
+    }
+  }
+},
+
+showRejectModal(item) {
+  this.selectedItem = item
+  this.rejectReason = ''
+  this.showRejectConfirm = true
+},
+
+closeRejectModal() {
+  this.showRejectConfirm = false
+  this.selectedItem = null
+  this.rejectReason = ''
+  this.rejectingItem = false
+},
+
+async confirmReject() {
+  if (!this.selectedItem) return
+  
+  this.rejectingItem = true
+  
+  try {
+    let result
+    
+    if (this.selectedItem.category === 'vacation') {
+      result = await vacationService.updateVacationRequestStatus(
+        this.selectedItem.id, 
+        'Refuse', 
+        this.rejectReason || 'Rejected by manager'
+      )
+    } else if (this.selectedItem.category === 'expense') {
+      result = await expenseService.updateExpenseReportStatus({
+        id: this.selectedItem.id,
+        userId: this.selectedItem.userId || this.selectedItem.employeId,
+        statut: 'Refusee',
+        commentaire: this.rejectReason
+      })
+    }
+    
+    if (result && result.success) {
+      // Remove from pending approvals
+      const index = this.pendingApprovals.findIndex(p => p.id === this.selectedItem.id)
+      if (index !== -1) {
+        this.pendingApprovals.splice(index, 1)
       }
-    },
+      
+      // Add to recent actions
+      this.addRecentAction({
+        type: 'rejected',
+        title: `${this.selectedItem.category === 'vacation' ? 'Vacation request' : 'Expense report'} rejected`,
+        details: `${this.selectedItem.employeeName}'s ${this.selectedItem.type.toLowerCase()} was rejected: ${this.rejectReason}`,
+        timestamp: new Date()
+      })
+      
+      this.updateTeamStats()
+      this.showNotification('Request rejected successfully', 'success')
+      this.closeRejectModal()
+    } else {
+      this.showNotification(result?.message || 'Failed to reject request', 'error')
+    }
+  } catch (error) {
+    this.showNotification('An error occurred while rejecting the request', 'error')
+  } finally {
+    this.rejectingItem = false
+  }
+},  
     
     addRecentAction(action) {
       this.recentActions.unshift({
