@@ -26,7 +26,7 @@ namespace MonBackend.Controllers
                 // Add validation logging
                 if (dto == null)
                 {
-                    return BadRequest(new { message = "Invalid data received" });
+                    return BadRequest(new { message = "Invalid data received !" });
                 }
 
                 // Log the received DTO for debugging
